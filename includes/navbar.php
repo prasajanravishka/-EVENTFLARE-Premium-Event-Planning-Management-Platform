@@ -9,6 +9,9 @@ $path_prefix = '';
 if (strpos($current_uri, '/admin/') !== false || strpos($current_uri, '/events/') !== false || strpos($current_uri, '/supplier/') !== false) {
     $path_prefix = '../';
 }
+$cur_filename = basename($current_uri);
+$is_home = ($cur_filename === 'Home.php' || $cur_filename === '' || $cur_filename === 'index.php');
+$home_base = $is_home ? '' : $path_prefix . 'Home.php';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -149,7 +152,7 @@ if (strpos($current_uri, '/admin/') !== false || strpos($current_uri, '/events/'
         <div class="navbar-container">
             <!-- Logo -->
             <div class="logo">
-                <a href="<?php echo $path_prefix; ?>Home.php">
+                <a href="<?php echo $home_base; ?>#hero">
                     <img src="<?php echo $path_prefix; ?>assets/images/logo.jpg" alt="Logo">
                     EVENTFLARE
                 </a>
@@ -162,9 +165,11 @@ if (strpos($current_uri, '/admin/') !== false || strpos($current_uri, '/events/'
 
             <!-- Navbar Links -->
             <ul class="nav-menu" id="nav-menu">
-                <li><a href="<?php echo $path_prefix; ?>Home.php" class="nav-link">Home</a></li>
-                <li><a href="<?php echo $path_prefix; ?>AboutUs.php" class="nav-link">About</a></li>
-                <li><a href="<?php echo $path_prefix; ?>Contact.php" class="nav-link">Contact</a></li>
+                <li><a href="<?php echo $home_base; ?>#hero" class="nav-link" data-section="hero">Home</a></li>
+                <li><a href="<?php echo $home_base; ?>#services" class="nav-link" data-section="services">Services</a></li>
+                <li><a href="<?php echo $home_base; ?>#about" class="nav-link" data-section="about">About</a></li>
+                <li><a href="<?php echo $home_base; ?>#reviews" class="nav-link" data-section="reviews">Reviews</a></li>
+                <li><a href="<?php echo $home_base; ?>#contact" class="nav-link" data-section="contact">Contact</a></li>
                 <?php if (isset($_SESSION['login_user'])): ?>
                     <?php if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'admin'): ?>
                         <li><a href="<?php echo $path_prefix; ?>admin/Dashboard.php" class="nav-link">Admin Panel</a></li>
@@ -186,26 +191,74 @@ if (strpos($current_uri, '/admin/') !== false || strpos($current_uri, '/events/'
             const toggle = document.getElementById('mobile-menu-toggle');
             const menu = document.getElementById('nav-menu');
             
-            toggle.addEventListener('click', () => {
-                menu.classList.toggle('active');
-                const icon = toggle.querySelector('i');
-                if(menu.classList.contains('active')) {
-                    icon.className = 'fas fa-times';
-                } else {
-                    icon.className = 'fas fa-bars';
-                }
+            if (toggle && menu) {
+                toggle.addEventListener('click', () => {
+                    menu.classList.toggle('active');
+                    const icon = toggle.querySelector('i');
+                    if (icon) {
+                        if (menu.classList.contains('active')) {
+                            icon.className = 'fas fa-times';
+                        } else {
+                            icon.className = 'fas fa-bars';
+                        }
+                    }
+                });
+            }
+
+            // Close mobile menu on clicking any nav-link
+            const navLinks = document.querySelectorAll('.nav-link');
+            navLinks.forEach(link => {
+                link.addEventListener('click', () => {
+                    if (menu && menu.classList.contains('active')) {
+                        menu.classList.remove('active');
+                        const icon = toggle ? toggle.querySelector('i') : null;
+                        if (icon) icon.className = 'fas fa-bars';
+                    }
+                });
             });
 
-            // Set Active link
+            // Active section highlighting on Home page (ScrollSpy)
             const currentFile = window.location.pathname.split("/").pop();
-            const links = document.querySelectorAll('.nav-link');
-            links.forEach(link => {
-                const href = link.getAttribute('href');
-                const linkFile = href.substring(href.lastIndexOf('/') + 1);
-                if (linkFile === currentFile || (currentFile === '' && linkFile === 'Home.php')) {
-                    link.classList.add('active');
+            const isHomePage = (currentFile === 'Home.php' || currentFile === '' || currentFile === 'index.php');
+
+            if (isHomePage) {
+                const sectionIds = ['hero', 'services', 'about', 'reviews', 'contact'];
+                const sections = sectionIds.map(id => document.getElementById(id)).filter(Boolean);
+                
+                function updateActiveNav() {
+                    const scrollPos = window.scrollY + 140;
+                    let currentSectionId = '';
+                    sections.forEach(section => {
+                        const top = section.offsetTop;
+                        const height = section.offsetHeight;
+                        if (scrollPos >= top && scrollPos < top + height) {
+                            currentSectionId = section.id;
+                        }
+                    });
+                    if (!currentSectionId && window.scrollY < 200) {
+                        currentSectionId = 'hero';
+                    }
+                    if (currentSectionId) {
+                        navLinks.forEach(link => {
+                            if (link.getAttribute('data-section') === currentSectionId) {
+                                link.classList.add('active');
+                            } else if (link.hasAttribute('data-section')) {
+                                link.classList.remove('active');
+                            }
+                        });
+                    }
                 }
-            });
+                window.addEventListener('scroll', updateActiveNav, { passive: true });
+                updateActiveNav();
+            } else {
+                navLinks.forEach(link => {
+                    const href = link.getAttribute('href');
+                    const linkFile = href.substring(href.lastIndexOf('/') + 1).split('#')[0];
+                    if (linkFile && linkFile === currentFile) {
+                        link.classList.add('active');
+                    }
+                });
+            }
         });
     </script>
 </body>

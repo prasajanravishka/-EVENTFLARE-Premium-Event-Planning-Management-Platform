@@ -112,22 +112,23 @@ $params = [];
 $types = "";
 
 if (!empty($search)) {
-    $where_clauses[] = "(BookingID LIKE ? OR user_name LIKE ? OR Place LIKE ?)";
+    $where_clauses[] = "(b.BookingID LIKE ? OR b.user_name LIKE ? OR u.fullname LIKE ? OR b.Place LIKE ?)";
     $like = "%{$search}%";
     $params[] = &$like;
     $params[] = &$like;
     $params[] = &$like;
-    $types .= "sss";
+    $params[] = &$like;
+    $types .= "ssss";
 }
 
 if (!empty($status_filter)) {
-    $where_clauses[] = "status = ?";
+    $where_clauses[] = "b.status = ?";
     $params[] = &$status_filter;
     $types .= "s";
 }
 
 if (!empty($type_filter)) {
-    $where_clauses[] = "EventType = ?";
+    $where_clauses[] = "b.EventType = ?";
     $params[] = &$type_filter;
     $types .= "s";
 }
@@ -135,7 +136,7 @@ if (!empty($type_filter)) {
 $where_sql = implode(" AND ", $where_clauses);
 
 // Count total matching
-$count_stmt = $conn->prepare("SELECT COUNT(*) as c FROM bookings WHERE {$where_sql}");
+$count_stmt = $conn->prepare("SELECT COUNT(*) as c FROM bookings b LEFT JOIN users u ON b.user_name = u.username WHERE {$where_sql}");
 if (!empty($types)) {
     $count_stmt->bind_param($types, ...$params);
 }
@@ -165,13 +166,15 @@ $fetch_sql = "SELECT b.*,
               WHERE {$where_sql} 
               ORDER BY b.EventDate DESC, b.BookingID DESC 
               LIMIT ? OFFSET ?";
-$params[] = &$limit;
-$params[] = &$offset;
-$types .= "ii";
+$fetch_params = $params;
+$fetch_types = $types;
+$fetch_params[] = &$limit;
+$fetch_params[] = &$offset;
+$fetch_types .= "ii";
 
 $stmt = $conn->prepare($fetch_sql);
-if (!empty($types)) {
-    $stmt->bind_param($types, ...$params);
+if (!empty($fetch_types)) {
+    $stmt->bind_param($fetch_types, ...$fetch_params);
 }
 $stmt->execute();
 $bookings = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
